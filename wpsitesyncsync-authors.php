@@ -5,7 +5,7 @@ Plugin URI: http://wpsitesync.com
 Description: Allow setting author/attribution while Synchronizing content between the Source and Target sites using WPSiteSync for Content.
 Author: WPSiteSync
 Author URI: http://wpsitesync.com
-Version: 1.0
+Version: 1.0.1
 Text Domain: wpsitesync-authors
 
 The PHP code portions are distributed under the GPL license. If not otherwise stated, all
@@ -22,7 +22,7 @@ if (!class_exists('WPSiteSync_Authors')) {
 		private static $_instance = NULL;
 
 		const PLUGIN_NAME = 'WPSiteSync for Authors';
-		const PLUGIN_VERSION = '1.0';
+		const PLUGIN_VERSION = '1.0.1';
 		const PLUGIN_KEY = '115e12f6e84055cafdf05c3d1ce0bd3a';
 
 		private $_license = NULL;
