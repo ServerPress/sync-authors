@@ -108,7 +108,7 @@ SyncDebug::log(__METHOD__.'() author=' . $author_id);
 			$user = new WP_User($author_id);
 
 			// make sure it's a valid user instance
-			if (is_a($user, 'WP_User') && 0 !== $user->id) {
+			if (is_a($user, 'WP_User') && 0 !== $user->ID) {
 				$user_data = array(
 					'roles' => $user->roles,
 					'first_name' => $user->first_name,
