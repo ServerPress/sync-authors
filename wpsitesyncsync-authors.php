@@ -25,8 +25,6 @@ if (!class_exists('WPSiteSync_Authors')) {
 		const PLUGIN_VERSION = '1.0.1';
 		const PLUGIN_KEY = '115e12f6e84055cafdf05c3d1ce0bd3a';
 
-		private $_license = NULL;
-
 		private function __construct()
 		{
 			add_action('spectrom_sync_init', array(&$this, 'init'));
@@ -50,8 +48,7 @@ if (!class_exists('WPSiteSync_Authors')) {
 		{
 			add_filter('spectrom_sync_active_extensions', array(&$this, 'filter_active_extensions'), 10, 2);
 
-			$this->_license = new SyncLicensing();
-			if (!$this->_license->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME))
+			if (!WPSiteSyncContent::get_instance()->get_license()->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME))
 				return;
 
 			if (is_admin()) {
@@ -87,7 +84,7 @@ if (!class_exists('WPSiteSync_Authors')) {
 		public function check_api_query($return, $action, SyncApiResponse $response)
 		{
 			// TODO: can be removed
-			if (!$this->_license->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME))
+			if (!WPSiteSyncContent::get_instance()->get_license()->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME))
 				return $return;
 
 			$input = new SyncInput();
@@ -137,7 +134,7 @@ SyncDebug::log(__METHOD__.'() action=' . $action);
 		 */
 		public function process_push_request($target_post_id, $data, $response)
 		{
-			if (!$this->_license->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME))
+			if (!WPSiteSyncContent::get_instance()->get_license()->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME))
 				return $return;
 			require_once(dirname(__FILE__) . '/classes/authorapirequest.php');
 			$req = new SyncAuthorApiRequest();
@@ -160,14 +157,14 @@ SyncDebug::log(__METHOD__.'() action=' . $action);
 		}
 
 		/**
-		 * Adds the WPSiteSync Pull add-on to the list of known WPSiteSync extensions
+		 * Adds the WPSiteSync Authors add-on to the list of known WPSiteSync extensions
 		 * @param array $extensions The list of extensions
 		 * @param boolean TRUE to force adding the extension; otherwise FALSE
 		 * @return array Modified list of extensions
 		 */
 		public function filter_active_extensions($extensions, $set = FALSE)
 		{
-			if ($set || $this->_license->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME))
+			if ($set || WPSiteSyncContent::get_instance()->get_license()->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME))
 				$extensions['sync_authors'] = array(
 					'name' => self::PLUGIN_NAME,
 					'version' => self::PLUGIN_VERSION,
