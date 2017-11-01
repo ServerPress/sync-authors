@@ -12,7 +12,7 @@ The PHP code portions are distributed under the GPL license. If not otherwise st
 images, manuals, cascading stylesheets and included JavaScript are NOT GPL.
 */
 
-if (!class_exists('WPSiteSync_Authors')) {
+if (!class_exists('WPSiteSync_Authors', FALSE)) {
 	/*
 	 * @package WPSiteSync_Authors
 	 * @author Dave Jesch
@@ -27,7 +27,7 @@ if (!class_exists('WPSiteSync_Authors')) {
 
 		private function __construct()
 		{
-			add_action('spectrom_sync_init', array(&$this, 'init'));
+			add_action('spectrom_sync_init', array($this, 'init'));
 		}
 
 		/*
@@ -46,20 +46,25 @@ if (!class_exists('WPSiteSync_Authors')) {
 		 */
 		public function init()
 		{
-			add_filter('spectrom_sync_active_extensions', array(&$this, 'filter_active_extensions'), 10, 2);
+//SyncDebug::log(__METHOD__.'():' . __LINE__);
+			add_filter('spectrom_sync_active_extensions', array($this, 'filter_active_extensions'), 10, 2);
 
-			if (!WPSiteSyncContent::get_instance()->get_license()->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME))
+			if (!WPSiteSyncContent::get_instance()->get_license()->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME)) {
+//SyncDebug::log(__METHOD__.'():' . __LINE__ . ' no license');
 				return;
+			}
 
 			if (is_admin()) {
 				require_once (dirname(__FILE__) . DIRECTORY_SEPARATOR . 'classes' . DIRECTORY_SEPARATOR . 'authorsadmin.php');
 				require_once (dirname(__FILE__) . DIRECTORY_SEPARATOR . 'classes' . DIRECTORY_SEPARATOR . 'authorsmodel.php');
 				SyncAuthorsAdmin::get_instance();
+//SyncDebug::log(__METHOD__.'():' . __LINE__ . ' SyncAuthorsAdmin loaded');
 			}
 
-			add_filter('spectrom_sync_api', array(&$this, 'check_api_query'), 20, 3);
-			add_action('spectrom_sync_push_content', array(&$this, 'process_push_request'), 20, 3);
-			add_filter('spectrom_sync_notice_code_to_text', array(&$this, 'filter_notice_code'), 10, 2);
+			add_filter('spectrom_sync_api', array($this, 'check_api_query'), 20, 3);
+			add_filter('spectrom_sync_api_push_content', array($this, 'filter_push_request'), 10, 2);		// moved from SyncAuthorsAdmin
+			add_action('spectrom_sync_push_content', array($this, 'process_push_request'), 20, 3);
+			add_filter('spectrom_sync_notice_code_to_text', array($this, 'filter_notice_code'), 10, 2);
 		}
 
 		/*
@@ -71,6 +76,43 @@ if (!class_exists('WPSiteSync_Authors')) {
 		{
 			$ret = plugin_dir_url(__FILE__) . 'assets/' . $ref;
 			return $ret;
+		}
+
+		/**
+		 * Filters the post data Content on the Source before it's sent to the Target.
+		 * @param array $data All of the post data
+		 * @param SyncApiRequest $api_request The API request instance making the API call
+		 * @return array The filtered data
+		 */
+		public function filter_push_request($data, $api_request)
+		{
+//SyncDebug::log(__METHOD__.'():' . __LINE__ . ' post id=' . @$data['post_data']['ID']);
+			$author_id = abs($data['post_data']['post_author']);
+//SyncDebug::log(__METHOD__.'():' . __LINE__ . ' author id=' . $author_id);
+			if ($author_id > 0) {
+				$user = new WP_User($author_id);
+
+				// make sure it's a valid user instance
+				if (is_a($user, 'WP_User') && 0 !== $user->ID) {
+					$user_data = array(
+						'roles' => $user->roles,
+						'first_name' => $user->first_name,
+						'last_name' => $user->last_name,
+						'user_login' => $user->user_login,
+						'user_pass' => $user->user_pass,
+						'user_nicename' => $user->user_nicename,
+						'user_email' => $user->user_email,
+						'display_name' => $user->dislay_name,
+					);
+//SyncDebug::log(__METHOD__.'() user=' . var_export($user, TRUE));
+					$data['author_data'] = $user_data;
+				} else {
+//SyncDebug::log(__METHOD__.'() unable to find user id ' . $author_id);
+				}
+			} else {
+//SyncDebug::log(__METHOD__.'() no valid author id found');
+			}
+			return $data;
 		}
 
 		/**
@@ -88,7 +130,7 @@ if (!class_exists('WPSiteSync_Authors')) {
 				return $return;
 
 			$input = new SyncInput();
-SyncDebug::log(__METHOD__.'() action=' . $action);
+//SyncDebug::log(__METHOD__.'() action=' . $action);
 
 			if ('getauthors' === $action) {
 				// TODO: nonce verification to be done in SyncApiController::__construct() so we don't have to do it here
@@ -127,13 +169,14 @@ SyncDebug::log(__METHOD__.'() action=' . $action);
 		}
 
 		/**
-		 * Handles processing of push requests. Called from SyncApiController->push()
+		 * Handles processing of push requests on Target. Called from SyncApiController->push()
 		 * @param int $target_post_id Post ID on Target site
 		 * @param array $data Data array to be sent with API request
 		 * @param SyncApiResponse $response The Response instance
 		 */
 		public function process_push_request($target_post_id, $data, $response)
 		{
+//SyncDebug::log(__METHOD__.'():' . __LINE__ . ' target post=' . $target_post_id);
 			if (!WPSiteSyncContent::get_instance()->get_license()->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME))
 				return $return;
 			require_once(dirname(__FILE__) . '/classes/authorapirequest.php');

@@ -12,9 +12,9 @@ class SyncAuthorApiRequest
 	 */
 	public function process_request($target_post_id, $data, $response)
 	{
-SyncDebug::log(__METHOD__.'(' . $target_post_id . ') post=' . var_export($_POST, TRUE));
+//SyncDebug::log(__METHOD__.'(' . $target_post_id . ') post=' . var_export($_POST, TRUE));
 		if (!isset($_POST['author_data'])) {
-SyncDebug::log(__METHOD__.'() no author_data found');
+//SyncDebug::log(__METHOD__.'() no author_data found. Sync Authors not active on Source?');
 			return;
 		}
 
@@ -27,7 +27,7 @@ SyncDebug::log(__METHOD__.'() no author_data found');
 		$user_slug = get_user_by('slug', $author['user_nicename']);
 		if (FALSE === $user_login && FALSE === $user_email && FALSE === $user_slug) {
 			// user not found by login, email or display name
-SyncDebug::log('user not found - creating');
+//SyncDebug::log(__METHOD__.'():' . __LINE__ . ' user not found - creating');
 			// create the user
 			$role = 'author';
 			if (isset($author['roles']) && count($author['roles']) > 0)
@@ -44,11 +44,12 @@ SyncDebug::log('user not found - creating');
 			);
 			$id = wp_insert_user($data);
 			if (!is_wp_error($id)) {
-SyncDebug::log('- created user id' . $id);
+//SyncDebug::log(__METHOD__.'():' . __LINE__ . ' - created user id' . $id);
 				$new_author_id = $id;
 				// TODO: reset password
 			}
 		} else {
+//SyncDebug::log(__METHOD__.'():' . __LINE__ . ' user found- updating');
 			$checks = 0;
 			if (FALSE === $user_login)
 				++$checks;
@@ -61,10 +62,10 @@ SyncDebug::log('- created user id' . $id);
 				(FALSE !== $user_login && FALSE !== $user_email && $user_login->ID !== $user_email->ID) ||
 				(FALSE !== $user_login && FALSE !== $user_slug && $user_login->ID !== $user_slug->ID)) {
 				// the IDs of the user searches do not match; return error indicator to Source
-SyncDebug::log(__METHOD__.'() non-matching attributes');
+//SyncDebug::log(__METHOD__.'() non-matching attributes');
 				$response->notice_code(self::NOTICE_AUTHOR_ACCOUNT_EXISTS);
 			} else {
-SyncDebug::log(__METHOD__.'() user exists, updating post to author ' . $user_login->ID);
+//SyncDebug::log(__METHOD__.'() user exists, updating post to author ' . $user_login->ID);
 				// the user exists and the login name, email and name match. Update the author information
 				$new_author_id = $user_login->ID;
 			}
@@ -75,7 +76,7 @@ SyncDebug::log(__METHOD__.'() user exists, updating post to author ' . $user_log
 				'ID' => $target_post_id,
 				'post_author' => $new_author_id,
 			);
-SyncDebug::log(__METHOD__.'() calling wp_update_post() with ' . var_export($data, TRUE));
+//SyncDebug::log(__METHOD__.'() calling wp_update_post() with ' . var_export($data, TRUE));
 			wp_update_post($data);
 		}
 	}
