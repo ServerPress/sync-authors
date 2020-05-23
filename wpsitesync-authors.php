@@ -5,7 +5,7 @@ Plugin URI: http://wpsitesync.com
 Description: Allow setting author/attribution while Synchronizing content between the Source and Target sites using WPSiteSync for Content.
 Author: WPSiteSync
 Author URI: http://wpsitesync.com
-Version: 1.0.1
+Version: 1.0.2
 Text Domain: wpsitesync-authors
 
 The PHP code portions are distributed under the GPL license. If not otherwise stated, all
@@ -28,6 +28,7 @@ if (!class_exists('WPSiteSync_Authors', FALSE)) {
 		private function __construct()
 		{
 			add_action('spectrom_sync_init', array($this, 'init'));
+			add_action('wp_loaded', array($this, 'wp_loaded'));
 		}
 
 		/*
@@ -55,16 +56,62 @@ if (!class_exists('WPSiteSync_Authors', FALSE)) {
 			}
 
 			if (is_admin()) {
-				require_once (dirname(__FILE__) . DIRECTORY_SEPARATOR . 'classes' . DIRECTORY_SEPARATOR . 'authorsadmin.php');
-				require_once (dirname(__FILE__) . DIRECTORY_SEPARATOR . 'classes' . DIRECTORY_SEPARATOR . 'authorsmodel.php');
+				require_once __DIR__ . '/classes/authorsadmin.php';
+				require_once __DIR__ . '/classes/authorsmodel.php';
 				SyncAuthorsAdmin::get_instance();
 //SyncDebug::log(__METHOD__.'():' . __LINE__ . ' SyncAuthorsAdmin loaded');
 			}
 
+			// TODO: move into 'spectrom_sync_api_init' callback
 			add_filter('spectrom_sync_api', array($this, 'check_api_query'), 20, 3);
 			add_filter('spectrom_sync_api_push_content', array($this, 'filter_push_request'), 10, 2);		// moved from SyncAuthorsAdmin
 			add_action('spectrom_sync_push_content', array($this, 'process_push_request'), 20, 3);
 			add_filter('spectrom_sync_notice_code_to_text', array($this, 'filter_notice_code'), 10, 2);
+		}
+
+		/**
+		 * Called when WP is loaded so we can check if parent plugin is active.
+		 */
+		public function wp_loaded()
+		{
+			if (is_admin() && !class_exists('WPSiteSyncContent', FALSE) && current_user_can('activate_plugins')) {
+				add_action('admin_notices', array($this, 'notice_requires_wpss'));
+				add_action('admin_init', array($this, 'disable_plugin'));
+			}
+		}
+
+		/**
+		 * Displays the warning message stating that WPSiteSync is not present.
+		 */
+		public function notice_requires_wpss()
+		{
+			$install = admin_url('plugin-install.php?tab=search&s=wpsitesync');
+			$activate = admin_url('plugins.php');
+			$msg = sprintf(__('The <em>WPSiteSync for Authors</em> plugin requires the main <em>WPSiteSync for Content</em> plugin to be installed and activated. Please %1$sclick here</a> to install or %2$sclick here</a> to activate.', 'wpsitesync-authors'),
+						'<a href="' . $install . '">',
+						'<a href="' . $activate . '">');
+			$this->_show_notice($msg, 'notice-warning');
+		}
+
+		/**
+		 * Helper method to display notices
+		 * @param string $msg Message to display within notice
+		 * @param string $class The CSS class used on the <div> wrapping the notice
+		 * @param boolean $dismissable TRUE if message is to be dismissable; otherwise FALSE.
+		 */
+		private function _show_notice($msg, $class = 'notice-success', $dismissable = FALSE)
+		{
+			echo '<div class="notice ', $class, ' ', ($dismissable ? 'is-dismissible' : ''), '">';
+			echo '<p>', $msg, '</p>';
+			echo '</div>';
+		}
+
+		/**
+		 * Disables the plugin if WPSiteSync not installed or ACF is too old
+		 */
+		public function disable_plugin()
+		{
+			deactivate_plugins(plugin_basename(__FILE__));
 		}
 
 		/*
@@ -125,7 +172,6 @@ if (!class_exists('WPSiteSync_Authors', FALSE)) {
 		// TODO: ensure only called once Sync is initialized
 		public function check_api_query($return, $action, SyncApiResponse $response)
 		{
-			// TODO: can be removed
 			if (!WPSiteSyncContent::get_instance()->get_license()->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME))
 				return $return;
 
@@ -178,8 +224,8 @@ if (!class_exists('WPSiteSync_Authors', FALSE)) {
 		{
 //SyncDebug::log(__METHOD__.'():' . __LINE__ . ' target post=' . $target_post_id);
 			if (!WPSiteSyncContent::get_instance()->get_license()->check_license('sync_authors', self::PLUGIN_KEY, self::PLUGIN_NAME))
-				return $return;
-			require_once(dirname(__FILE__) . '/classes/authorapirequest.php');
+				return;
+			require_once __DIR__ . '/classes/authorapirequest.php';
 			$req = new SyncAuthorApiRequest();
 			$req->process_request($target_post_id, $data, $response);
 		}
@@ -192,7 +238,7 @@ if (!class_exists('WPSiteSync_Authors', FALSE)) {
 		 */
 		public function filter_notice_code($msg, $code)
 		{
-			require_once(dirname(__FILE__) . '/classes/authorapirequest.php');
+			require_once __DIR__ . '/classes/authorapirequest.php';
 			switch ($code) {
 			case SyncAuthorApiRequest::NOTICE_AUTHOR_ACCOUNT_EXISTS:		$msg = __('Cannot Sync Author- account already exists.', 'wpsitesync-authors'); break;
 			}
