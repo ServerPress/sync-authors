@@ -1,0 +1,2 @@
+* enhancement: Update .htaccess rules for Apache 2.4.
+* enhancement: Check for presents of WPSiteSync and disable if not found.
